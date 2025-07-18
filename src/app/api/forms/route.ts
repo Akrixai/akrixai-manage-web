@@ -14,6 +14,15 @@ async function getForms() {
 }
 
 async function addForm(body: any) {
+  const payload = {
+    name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null,
+    link: typeof body.link === 'string' && body.link.trim() ? body.link.trim() : null,
+    excel_link: typeof body.excel_link === 'string' && body.excel_link.trim() ? body.excel_link.trim() : null,
+    notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null,
+  };
+  if (!payload.name || !payload.link) {
+    return { error: 'Name and link are required' };
+  }
   const res = await fetch(`${SUPABASE_URL}/rest/v1/forms`, {
     method: "POST",
     headers: {
@@ -22,18 +31,23 @@ async function addForm(body: any) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      name: body.name,
-      link: body.link,
-      excel_link: body.excel_link,
-      notes: body.notes,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
+  if (!Array.isArray(data) || !data[0]) {
+    console.error('Supabase error:', data);
+    return { error: data?.message || 'Supabase insert error', details: data };
+  }
   return data[0];
 }
 
 async function updateForm(id: string, body: any) {
+  const payload = {
+    name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null,
+    link: typeof body.link === 'string' && body.link.trim() ? body.link.trim() : null,
+    excel_link: typeof body.excel_link === 'string' && body.excel_link.trim() ? body.excel_link.trim() : null,
+    notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null,
+  };
   const res = await fetch(`${SUPABASE_URL}/rest/v1/forms?id=eq.${id}`, {
     method: "PATCH",
     headers: {
@@ -42,14 +56,13 @@ async function updateForm(id: string, body: any) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      name: body.name,
-      link: body.link,
-      excel_link: body.excel_link,
-      notes: body.notes,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
+  if (!Array.isArray(data) || !data[0]) {
+    console.error('Supabase error:', data);
+    return { error: data?.message || 'Supabase update error', details: data };
+  }
   return data[0];
 }
 
@@ -71,6 +84,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const form = await addForm(body);
+  if (!form || typeof form !== 'object') {
+    return NextResponse.json({ error: 'Failed to create form' }, { status: 500 });
+  }
   return NextResponse.json(form);
 }
 
@@ -79,6 +95,9 @@ export async function PUT(req: NextRequest) {
   const id = url.pathname.split("/").pop();
   const body = await req.json();
   const updated = await updateForm(id!, body);
+  if (!updated || typeof updated !== 'object') {
+    return NextResponse.json({ error: 'Failed to update form' }, { status: 500 });
+  }
   return NextResponse.json(updated);
 }
 

@@ -63,12 +63,16 @@ export default function TrackingPage() {
     });
     if (res.ok) {
       const newTracking = await res.json();
-      setTrackings([newTracking, ...trackings]);
-      setEntityType("");
-      setEntityId("");
-      setAction("");
-      setDetails("");
-      setSuccess("Tracking entry added successfully");
+      if (newTracking && !newTracking.error) {
+        setEntityType("");
+        setEntityId("");
+        setAction("");
+        setDetails("");
+        setSuccess("Tracking entry added successfully");
+        await fetchTrackings();
+      } else {
+        setError(newTracking?.error || "Failed to add tracking entry");
+      }
     } else {
       setError("Failed to add tracking entry");
     }
@@ -100,9 +104,13 @@ export default function TrackingPage() {
     });
     if (res.ok) {
       const updated = await res.json();
-      setTrackings(trackings.map(t => t.id === updated.id ? updated : t));
-      setEditTracking(null);
-      setSuccess("Tracking entry updated successfully");
+      if (updated && !updated.error) {
+        setEditTracking(null);
+        setSuccess("Tracking entry updated successfully");
+        await fetchTrackings();
+      } else {
+        setError(updated?.error || "Failed to update tracking entry");
+      }
     } else {
       setError("Failed to update tracking entry");
     }
@@ -125,8 +133,8 @@ export default function TrackingPage() {
     setSuccess("");
     const res = await fetch(`/api/tracking/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
-      setTrackings(trackings.filter(t => t.id !== deleteId));
       setSuccess("Tracking entry deleted successfully");
+      await fetchTrackings();
     } else {
       setError("Failed to delete tracking entry");
     }
@@ -143,30 +151,30 @@ export default function TrackingPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto px-2 sm:px-6">
       <h1 className="text-2xl font-bold text-[var(--primary)]">Tracking</h1>
-      <form onSubmit={handleAddTracking} className="flex flex-col sm:flex-row gap-4 items-end bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 shadow-sm">
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+      <form onSubmit={handleAddTracking} className="flex flex-col sm:flex-row flex-wrap gap-4 items-end bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 shadow-sm w-full">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Entity Type</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" value={entityType} onChange={e => setEntityType(e.target.value)} required />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={entityType} onChange={e => setEntityType(e.target.value)} required />
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Entity ID</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" value={entityId} onChange={e => setEntityId(e.target.value)} required />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={entityId} onChange={e => setEntityId(e.target.value)} required />
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Action</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" value={action} onChange={e => setAction(e.target.value)} required />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={action} onChange={e => setAction(e.target.value)} required />
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Details (JSON)</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2 font-mono" value={details} onChange={e => setDetails(e.target.value)} placeholder='{"field":"value"}' />
+          <input className="border border-[var(--border)] rounded px-3 py-2 font-mono w-full min-w-0" value={details} onChange={e => setDetails(e.target.value)} placeholder='{"field":"value"}' />
         </div>
-        <button type="submit" className="bg-[var(--primary)] text-white rounded px-4 py-2 font-semibold hover:bg-[var(--primary-light)] transition-colors min-w-[100px]" disabled={loading}>
+        <button type="submit" className="bg-[var(--primary)] text-white rounded px-4 py-2 font-semibold hover:bg-[var(--primary-light)] transition-colors min-w-[100px] w-full sm:w-auto" disabled={loading}>
           {loading ? "Adding..." : "Add Tracking"}
         </button>
       </form>
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-4 items-center w-full">
         <input
           className="border border-[var(--border)] rounded px-3 py-2 w-full sm:w-64"
           placeholder="Search tracking..."
@@ -176,8 +184,8 @@ export default function TrackingPage() {
         {success && <div className="text-[var(--success)] font-medium">{success}</div>}
         {error && <div className="text-[var(--danger)] font-medium">{error}</div>}
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-[var(--border)] rounded-lg bg-[var(--surface)]">
+      <div className="overflow-x-auto w-full">
+        <table className="min-w-[700px] w-full border border-[var(--border)] rounded-lg bg-[var(--surface)] text-sm sm:text-base">
           <thead>
             <tr className="bg-[var(--primary-light)] text-white">
               <th className="px-4 py-2 text-left">Entity Type</th>
@@ -191,12 +199,12 @@ export default function TrackingPage() {
           <tbody>
             {filteredTrackings.map(tracking => (
               <tr key={tracking.id} className="border-t border-[var(--border)]">
-                <td className="px-4 py-2">{tracking.entity_type}</td>
-                <td className="px-4 py-2">{tracking.entity_id}</td>
-                <td className="px-4 py-2">{tracking.action}</td>
-                <td className="px-4 py-2"><pre className="whitespace-pre-wrap text-xs font-mono">{tracking.details ? JSON.stringify(tracking.details, null, 2) : ""}</pre></td>
-                <td className="px-4 py-2">{new Date(tracking.timestamp).toLocaleString()}</td>
-                <td className="px-4 py-2 flex gap-2">
+                <td className="px-4 py-2 break-words max-w-[120px]">{tracking.entity_type}</td>
+                <td className="px-4 py-2 break-words max-w-[120px]">{tracking.entity_id}</td>
+                <td className="px-4 py-2 break-words max-w-[120px]">{tracking.action}</td>
+                <td className="px-4 py-2 break-words max-w-[160px]"><pre className="whitespace-pre-wrap text-xs font-mono">{tracking.details ? JSON.stringify(tracking.details, null, 2) : ""}</pre></td>
+                <td className="px-4 py-2 whitespace-nowrap">{new Date(tracking.timestamp).toLocaleString()}</td>
+                <td className="px-4 py-2 flex gap-2 flex-wrap">
                   <button className="text-[var(--primary)] underline" onClick={() => handleEditClick(tracking)} disabled={loading}>Edit</button>
                   <button className="text-[var(--danger)] underline" onClick={() => handleDeleteClick(tracking.id)} disabled={loading}>Delete</button>
                 </td>
@@ -212,8 +220,8 @@ export default function TrackingPage() {
       </div>
       {/* Edit Modal */}
       {editTracking && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <form onSubmit={handleEditSave} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 flex flex-col gap-4 min-w-[320px] shadow-lg">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-0">
+          <form onSubmit={handleEditSave} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 sm:p-8 flex flex-col gap-4 min-w-[90vw] max-w-md w-full shadow-lg">
             <h2 className="text-xl font-bold text-[var(--primary)] mb-2">Edit Tracking Entry</h2>
             <label className="font-medium text-[var(--primary-dark)]">Entity Type</label>
             <input name="entity_type" className="border border-[var(--border)] rounded px-3 py-2" value={editTracking.entity_type} onChange={handleEditChange} required />
@@ -223,7 +231,7 @@ export default function TrackingPage() {
             <input name="action" className="border border-[var(--border)] rounded px-3 py-2" value={editTracking.action} onChange={handleEditChange} required />
             <label className="font-medium text-[var(--primary-dark)]">Details (JSON)</label>
             <textarea name="details" className="border border-[var(--border)] rounded px-3 py-2 font-mono" rows={3} value={editTracking.details} onChange={handleEditChange} />
-            <div className="flex gap-4 mt-4">
+            <div className="flex gap-4 mt-4 flex-wrap">
               <button type="button" className="px-4 py-2 rounded bg-gray-200" onClick={() => setEditTracking(null)} disabled={editLoading}>Cancel</button>
               <button type="submit" className="px-4 py-2 rounded bg-[var(--primary)] text-white font-semibold hover:bg-[var(--primary-light)]" disabled={editLoading}>{editLoading ? "Saving..." : "Save"}</button>
             </div>
@@ -232,11 +240,11 @@ export default function TrackingPage() {
       )}
       {/* Delete Confirmation */}
       {deleteId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 flex flex-col gap-4 min-w-[320px] shadow-lg">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-0">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 sm:p-8 flex flex-col gap-4 min-w-[90vw] max-w-md w-full shadow-lg">
             <h2 className="text-xl font-bold text-[var(--danger)] mb-2">Delete Tracking Entry</h2>
             <p>Are you sure you want to delete this tracking entry?</p>
-            <div className="flex gap-4 mt-4">
+            <div className="flex gap-4 mt-4 flex-wrap">
               <button type="button" className="px-4 py-2 rounded bg-gray-200" onClick={() => setDeleteId(null)} disabled={deleteLoading}>Cancel</button>
               <button type="button" className="px-4 py-2 rounded bg-[var(--danger)] text-white font-semibold hover:bg-red-700" onClick={handleDeleteConfirm} disabled={deleteLoading}>{deleteLoading ? "Deleting..." : "Delete"}</button>
             </div>

@@ -14,6 +14,15 @@ async function getTracking() {
 }
 
 async function addTracking(body: any) {
+  const payload = {
+    entity_type: typeof body.entity_type === 'string' && body.entity_type.trim() ? body.entity_type.trim() : null,
+    entity_id: typeof body.entity_id === 'string' && body.entity_id.trim() ? body.entity_id.trim() : null,
+    action: typeof body.action === 'string' && body.action.trim() ? body.action.trim() : null,
+    details: body.details ?? null,
+  };
+  if (!payload.entity_type || !payload.entity_id || !payload.action) {
+    return { error: 'Entity type, entity id, and action are required' };
+  }
   const res = await fetch(`${SUPABASE_URL}/rest/v1/tracking`, {
     method: "POST",
     headers: {
@@ -22,18 +31,23 @@ async function addTracking(body: any) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      entity_type: body.entity_type,
-      entity_id: body.entity_id,
-      action: body.action,
-      details: body.details,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
+  if (!Array.isArray(data) || !data[0]) {
+    console.error('Supabase error:', data);
+    return { error: data?.message || 'Supabase insert error', details: data };
+  }
   return data[0];
 }
 
 async function updateTracking(id: string, body: any) {
+  const payload = {
+    entity_type: typeof body.entity_type === 'string' && body.entity_type.trim() ? body.entity_type.trim() : null,
+    entity_id: typeof body.entity_id === 'string' && body.entity_id.trim() ? body.entity_id.trim() : null,
+    action: typeof body.action === 'string' && body.action.trim() ? body.action.trim() : null,
+    details: body.details ?? null,
+  };
   const res = await fetch(`${SUPABASE_URL}/rest/v1/tracking?id=eq.${id}`, {
     method: "PATCH",
     headers: {
@@ -42,14 +56,13 @@ async function updateTracking(id: string, body: any) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      entity_type: body.entity_type,
-      entity_id: body.entity_id,
-      action: body.action,
-      details: body.details,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
+  if (!Array.isArray(data) || !data[0]) {
+    console.error('Supabase error:', data);
+    return { error: data?.message || 'Supabase update error', details: data };
+  }
   return data[0];
 }
 
@@ -71,6 +84,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const tracking = await addTracking(body);
+  if (!tracking || typeof tracking !== 'object') {
+    return NextResponse.json({ error: 'Failed to create tracking entry' }, { status: 500 });
+  }
   return NextResponse.json(tracking);
 }
 
@@ -79,6 +95,9 @@ export async function PUT(req: NextRequest) {
   const id = url.pathname.split("/").pop();
   const body = await req.json();
   const updated = await updateTracking(id!, body);
+  if (!updated || typeof updated !== 'object') {
+    return NextResponse.json({ error: 'Failed to update tracking entry' }, { status: 500 });
+  }
   return NextResponse.json(updated);
 }
 

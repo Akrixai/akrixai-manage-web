@@ -62,11 +62,29 @@ export default function ProjectsPage() {
     }
   }
 
+  function handleClientInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    const match = safeClients.find(c => c.name === value);
+    if (match) {
+      setClientId(match.id);
+      setError("");
+    } else {
+      setClientId("");
+      setError("Please select a valid client from the list.");
+    }
+  }
+
   async function handleAddProject(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess("");
+    // Only allow valid UUIDs for clientId
+    if (!clientId || !/^[0-9a-fA-F-]{36}$/.test(clientId)) {
+      setError("Please select a valid client from the list.");
+      setLoading(false);
+      return;
+    }
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,12 +92,16 @@ export default function ProjectsPage() {
     });
     if (res.ok) {
       const newProject = await res.json();
-      setProjects([newProject, ...projects]);
-      setName("");
-      setClientId("");
-      setStatus("");
-      setDescription("");
-      setSuccess("Project added successfully");
+      if (newProject && !newProject.error) {
+        setName("");
+        setClientId("");
+        setStatus("");
+        setDescription("");
+        setSuccess("Project added successfully");
+        await fetchProjects();
+      } else {
+        setError(newProject?.error || "Failed to add project");
+      }
     } else {
       setError("Failed to add project");
     }
@@ -103,9 +125,13 @@ export default function ProjectsPage() {
     });
     if (res.ok) {
       const updated = await res.json();
-      setProjects(projects.map(p => p.id === updated.id ? updated : p));
-      setEditProject(null);
-      setSuccess("Project updated successfully");
+      if (updated && !updated.error) {
+        setEditProject(null);
+        setSuccess("Project updated successfully");
+        await fetchProjects();
+      } else {
+        setError(updated?.error || "Failed to update project");
+      }
     } else {
       setError("Failed to update project");
     }
@@ -128,8 +154,8 @@ export default function ProjectsPage() {
     setSuccess("");
     const res = await fetch(`/api/projects/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
-      setProjects(projects.filter(p => p.id !== deleteId));
       setSuccess("Project deleted successfully");
+      await fetchProjects();
     } else {
       setError("Failed to delete project");
     }
@@ -165,10 +191,7 @@ export default function ProjectsPage() {
             className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0"
             list="client-list"
             value={safeClients.find(c => c.id === clientId)?.name || clientId}
-            onChange={e => {
-              const match = safeClients.find(c => c.name === e.target.value);
-              setClientId(match ? match.id : e.target.value);
-            }}
+            onChange={handleClientInputChange}
             placeholder="Select or type client"
             required
           />

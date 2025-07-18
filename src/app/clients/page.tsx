@@ -54,11 +54,15 @@ export default function ClientsPage() {
     });
     if (res.ok) {
       const newClient = await res.json();
-      setClients([newClient, ...clients]);
-      setName("");
-      setContact("");
-      setEmail("");
-      setSuccess("Client added successfully");
+      if (newClient && !newClient.error) {
+        setName("");
+        setContact("");
+        setEmail("");
+        setSuccess("Client added successfully");
+        await fetchClients();
+      } else {
+        setError(newClient?.error || "Failed to add client");
+      }
     } else {
       setError("Failed to add client");
     }
@@ -82,9 +86,13 @@ export default function ClientsPage() {
     });
     if (res.ok) {
       const updated = await res.json();
-      setClients(clients.map(c => c.id === updated.id ? updated : c));
-      setEditClient(null);
-      setSuccess("Client updated successfully");
+      if (updated && !updated.error) {
+        setEditClient(null);
+        setSuccess("Client updated successfully");
+        await fetchClients();
+      } else {
+        setError(updated?.error || "Failed to update client");
+      }
     } else {
       setError("Failed to update client");
     }
@@ -107,8 +115,8 @@ export default function ClientsPage() {
     setSuccess("");
     const res = await fetch(`/api/clients/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
-      setClients(clients.filter(c => c.id !== deleteId));
       setSuccess("Client deleted successfully");
+      await fetchClients();
     } else {
       setError("Failed to delete client");
     }

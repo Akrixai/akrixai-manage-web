@@ -69,11 +69,29 @@ export default function PaymentsPage() {
   // For datalist
   const projectOptions = safeProjects.map(project => ({ id: project.id, name: project.name }));
 
+  function handleProjectInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    const match = safeProjects.find(p => p.name === value);
+    if (match) {
+      setProjectId(match.id);
+      setError("");
+    } else {
+      setProjectId("");
+      setError("Please select a valid project from the list.");
+    }
+  }
+
   async function handleAddPayment(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
     setSuccess("");
+    // Only allow valid UUIDs for projectId
+    if (!projectId || !/^[0-9a-fA-F-]{36}$/.test(projectId)) {
+      setError("Please select a valid project from the list.");
+      setLoading(false);
+      return;
+    }
     const res = await fetch("/api/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,13 +99,17 @@ export default function PaymentsPage() {
     });
     if (res.ok) {
       const newPayment = await res.json();
-      setPayments([newPayment, ...safePayments]);
-      setProjectId("");
-      setAmount("");
-      setStatus("");
-      setPaymentDate("");
-      setNotes("");
-      setSuccess("Payment added successfully");
+      if (newPayment && !newPayment.error) {
+        setProjectId("");
+        setAmount("");
+        setStatus("");
+        setPaymentDate("");
+        setNotes("");
+        setSuccess("Payment added successfully");
+        await fetchPayments();
+      } else {
+        setError(newPayment?.error || "Failed to add payment");
+      }
     } else {
       setError("Failed to add payment");
     }
@@ -111,9 +133,13 @@ export default function PaymentsPage() {
     });
     if (res.ok) {
       const updated = await res.json();
-      setPayments(safePayments.map(p => p.id === updated.id ? updated : p));
-      setEditPayment(null);
-      setSuccess("Payment updated successfully");
+      if (updated && !updated.error) {
+        setEditPayment(null);
+        setSuccess("Payment updated successfully");
+        await fetchPayments();
+      } else {
+        setError(updated?.error || "Failed to update payment");
+      }
     } else {
       setError("Failed to update payment");
     }
@@ -136,8 +162,8 @@ export default function PaymentsPage() {
     setSuccess("");
     const res = await fetch(`/api/payments/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
-      setPayments(safePayments.filter(p => p.id !== deleteId));
       setSuccess("Payment deleted successfully");
+      await fetchPayments();
     } else {
       setError("Failed to delete payment");
     }
@@ -153,19 +179,16 @@ export default function PaymentsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto px-2 sm:px-6">
       <h1 className="text-2xl font-bold text-[var(--primary)]">Payments</h1>
-      <form onSubmit={handleAddPayment} className="flex flex-col sm:flex-row gap-4 items-end bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 shadow-sm">
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+      <form onSubmit={handleAddPayment} className="flex flex-col sm:flex-row flex-wrap gap-4 items-end bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 shadow-sm w-full">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Project</label>
           <input
-            className="border border-[var(--border)] rounded px-3 py-2"
+            className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0"
             list="project-list"
             value={safeProjects.find(p => p.id === projectId)?.name || projectId}
-            onChange={e => {
-              const match = safeProjects.find(p => p.name === e.target.value);
-              setProjectId(match ? match.id : e.target.value);
-            }}
+            onChange={handleProjectInputChange}
             placeholder="Select or type project"
             required
           />
@@ -175,27 +198,27 @@ export default function PaymentsPage() {
             ))}
           </datalist>
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Amount</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Status</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" value={status} onChange={e => setStatus(e.target.value)} />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={status} onChange={e => setStatus(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Payment Date</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1 w-full sm:w-auto">
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Notes</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2" value={notes} onChange={e => setNotes(e.target.value)} />
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
-        <button type="submit" className="bg-[var(--primary)] text-white rounded px-4 py-2 font-semibold hover:bg-[var(--primary-light)] transition-colors min-w-[100px]" disabled={loading}>
+        <button type="submit" className="bg-[var(--primary)] text-white rounded px-4 py-2 font-semibold hover:bg-[var(--primary-light)] transition-colors min-w-[100px] w-full sm:w-auto" disabled={loading}>
           {loading ? "Adding..." : "Add Payment"}
         </button>
       </form>
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-4 items-center w-full">
         <input
           className="border border-[var(--border)] rounded px-3 py-2 w-full sm:w-64"
           placeholder="Search payments..."
@@ -205,8 +228,8 @@ export default function PaymentsPage() {
         {success && <div className="text-[var(--success)] font-medium">{success}</div>}
         {error && <div className="text-[var(--danger)] font-medium">{error}</div>}
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-[var(--border)] rounded-lg bg-[var(--surface)]">
+      <div className="overflow-x-auto w-full">
+        <table className="min-w-[700px] w-full border border-[var(--border)] rounded-lg bg-[var(--surface)] text-sm sm:text-base">
           <thead>
             <tr className="bg-[var(--primary-light)] text-white">
               <th className="px-4 py-2 text-left">Project</th>
@@ -221,13 +244,13 @@ export default function PaymentsPage() {
           <tbody>
             {filteredPayments.map(payment => (
               <tr key={payment.id} className="border-t border-[var(--border)]">
-                <td className="px-4 py-2">{safeProjects.find(p => p.id === payment.project_id)?.name || "-"}</td>
-                <td className="px-4 py-2">{payment.amount}</td>
-                <td className="px-4 py-2">{payment.status}</td>
-                <td className="px-4 py-2">{payment.payment_date}</td>
-                <td className="px-4 py-2">{payment.notes}</td>
-                <td className="px-4 py-2">{new Date(payment.created_at).toLocaleString()}</td>
-                <td className="px-4 py-2 flex gap-2">
+                <td className="px-4 py-2 break-words max-w-[120px]">{safeProjects.find(p => p.id === payment.project_id)?.name || "-"}</td>
+                <td className="px-4 py-2 break-words max-w-[100px]">{payment.amount}</td>
+                <td className="px-4 py-2 break-words max-w-[100px]">{payment.status}</td>
+                <td className="px-4 py-2 break-words max-w-[120px]">{payment.payment_date}</td>
+                <td className="px-4 py-2 break-words max-w-[120px]">{payment.notes}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{new Date(payment.created_at).toLocaleString()}</td>
+                <td className="px-4 py-2 flex gap-2 flex-wrap">
                   <button className="text-[var(--primary)] underline" onClick={() => handleEditClick(payment)} disabled={loading}>Edit</button>
                   <button className="text-[var(--danger)] underline" onClick={() => handleDeleteClick(payment.id)} disabled={loading}>Delete</button>
                 </td>
@@ -243,8 +266,8 @@ export default function PaymentsPage() {
       </div>
       {/* Edit Modal */}
       {editPayment && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <form onSubmit={handleEditSave} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 flex flex-col gap-4 min-w-[320px] shadow-lg">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-0">
+          <form onSubmit={handleEditSave} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 sm:p-8 flex flex-col gap-4 min-w-[90vw] max-w-md w-full shadow-lg">
             <h2 className="text-xl font-bold text-[var(--primary)] mb-2">Edit Payment</h2>
             <label className="font-medium text-[var(--primary-dark)]">Project</label>
             <input
@@ -272,7 +295,7 @@ export default function PaymentsPage() {
             <input name="payment_date" className="border border-[var(--border)] rounded px-3 py-2" type="date" value={editPayment.payment_date || ""} onChange={handleEditChange} />
             <label className="font-medium text-[var(--primary-dark)]">Notes</label>
             <input name="notes" className="border border-[var(--border)] rounded px-3 py-2" value={editPayment.notes || ""} onChange={handleEditChange} />
-            <div className="flex gap-4 mt-4">
+            <div className="flex gap-4 mt-4 flex-wrap">
               <button type="button" className="px-4 py-2 rounded bg-gray-200" onClick={() => setEditPayment(null)} disabled={editLoading}>Cancel</button>
               <button type="submit" className="px-4 py-2 rounded bg-[var(--primary)] text-white font-semibold hover:bg-[var(--primary-light)]" disabled={editLoading}>{editLoading ? "Saving..." : "Save"}</button>
             </div>
@@ -281,11 +304,11 @@ export default function PaymentsPage() {
       )}
       {/* Delete Confirmation */}
       {deleteId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-8 flex flex-col gap-4 min-w-[320px] shadow-lg">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-2 sm:p-0">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 sm:p-8 flex flex-col gap-4 min-w-[90vw] max-w-md w-full shadow-lg">
             <h2 className="text-xl font-bold text-[var(--danger)] mb-2">Delete Payment</h2>
             <p>Are you sure you want to delete this payment?</p>
-            <div className="flex gap-4 mt-4">
+            <div className="flex gap-4 mt-4 flex-wrap">
               <button type="button" className="px-4 py-2 rounded bg-gray-200" onClick={() => setDeleteId(null)} disabled={deleteLoading}>Cancel</button>
               <button type="button" className="px-4 py-2 rounded bg-[var(--danger)] text-white font-semibold hover:bg-red-700" onClick={handleDeleteConfirm} disabled={deleteLoading}>{deleteLoading ? "Deleting..." : "Delete"}</button>
             </div>

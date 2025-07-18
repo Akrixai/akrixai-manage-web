@@ -14,6 +14,16 @@ async function getPayments() {
 }
 
 async function addPayment(body: any) {
+  const payload = {
+    project_id: typeof body.project_id === 'string' && body.project_id.trim() ? body.project_id.trim() : null,
+    amount: typeof body.amount === 'number' && !isNaN(body.amount) ? body.amount : null,
+    status: typeof body.status === 'string' && body.status.trim() ? body.status.trim() : null,
+    payment_date: typeof body.payment_date === 'string' && body.payment_date.trim() ? body.payment_date.trim() : null,
+    notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null,
+  };
+  if (!payload.project_id || payload.amount === null) {
+    return { error: 'Project and amount are required' };
+  }
   const res = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
     method: "POST",
     headers: {
@@ -22,19 +32,24 @@ async function addPayment(body: any) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      project_id: body.project_id,
-      amount: body.amount,
-      status: body.status,
-      payment_date: body.payment_date,
-      notes: body.notes,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
+  if (!Array.isArray(data) || !data[0]) {
+    console.error('Supabase error:', data);
+    return { error: data?.message || 'Supabase insert error', details: data };
+  }
   return data[0];
 }
 
 async function updatePayment(id: string, body: any) {
+  const payload = {
+    project_id: typeof body.project_id === 'string' && body.project_id.trim() ? body.project_id.trim() : null,
+    amount: typeof body.amount === 'number' && !isNaN(body.amount) ? body.amount : null,
+    status: typeof body.status === 'string' && body.status.trim() ? body.status.trim() : null,
+    payment_date: typeof body.payment_date === 'string' && body.payment_date.trim() ? body.payment_date.trim() : null,
+    notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim() : null,
+  };
   const res = await fetch(`${SUPABASE_URL}/rest/v1/payments?id=eq.${id}`, {
     method: "PATCH",
     headers: {
@@ -43,15 +58,13 @@ async function updatePayment(id: string, body: any) {
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
-    body: JSON.stringify({
-      project_id: body.project_id,
-      amount: body.amount,
-      status: body.status,
-      payment_date: body.payment_date,
-      notes: body.notes,
-    }),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
+  if (!Array.isArray(data) || !data[0]) {
+    console.error('Supabase error:', data);
+    return { error: data?.message || 'Supabase update error', details: data };
+  }
   return data[0];
 }
 
@@ -73,6 +86,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const payment = await addPayment(body);
+  if (!payment || typeof payment !== 'object') {
+    return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
+  }
   return NextResponse.json(payment);
 }
 
@@ -81,6 +97,9 @@ export async function PUT(req: NextRequest) {
   const id = url.pathname.split("/").pop();
   const body = await req.json();
   const updated = await updatePayment(id!, body);
+  if (!updated || typeof updated !== 'object') {
+    return NextResponse.json({ error: 'Failed to update payment' }, { status: 500 });
+  }
   return NextResponse.json(updated);
 }
 
