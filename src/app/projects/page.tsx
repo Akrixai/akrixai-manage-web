@@ -43,9 +43,13 @@ export default function ProjectsPage() {
     setError("");
     try {
       const res = await fetch("/api/projects");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       setProjects(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error('Fetch projects error:', err);
       setProjects([]);
       setError("Failed to load projects");
     }
@@ -55,9 +59,13 @@ export default function ProjectsPage() {
   async function fetchClients() {
     try {
       const res = await fetch("/api/clients");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       setClients(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error('Fetch clients error:', err);
       setClients([]);
     }
   }
@@ -79,31 +87,41 @@ export default function ProjectsPage() {
     setLoading(true);
     setError("");
     setSuccess("");
+    
     // Only allow valid UUIDs for clientId
     if (!clientId || !/^[0-9a-fA-F-]{36}$/.test(clientId)) {
       setError("Please select a valid client from the list.");
       setLoading(false);
       return;
     }
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, client_id: clientId, status, description }),
-    });
-    if (res.ok) {
+    
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, client_id: clientId, status, description }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to add project');
+      }
+      
       const newProject = await res.json();
       if (newProject && !newProject.error) {
+        // Update the projects list immediately without refetching
+        setProjects(prev => [newProject, ...prev]);
         setName("");
         setClientId("");
         setStatus("");
         setDescription("");
         setSuccess("Project added successfully");
-        await fetchProjects();
       } else {
         setError(newProject?.error || "Failed to add project");
       }
-    } else {
-      setError("Failed to add project");
+    } catch (err) {
+      console.error('Add project error:', err);
+      setError(err instanceof Error ? err.message : "Failed to add project");
     }
     setLoading(false);
   }
@@ -115,25 +133,35 @@ export default function ProjectsPage() {
   async function handleEditSave(e: React.FormEvent) {
     e.preventDefault();
     if (!editProject) return;
+    
     setEditLoading(true);
     setError("");
     setSuccess("");
-    const res = await fetch(`/api/projects/${editProject.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editProject),
-    });
-    if (res.ok) {
+    
+    try {
+      const res = await fetch(`/api/projects/${editProject.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editProject),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update project');
+      }
+      
       const updated = await res.json();
       if (updated && !updated.error) {
+        // Update the projects list immediately without refetching
+        setProjects(prev => prev.map(p => p.id === editProject.id ? updated : p));
         setEditProject(null);
         setSuccess("Project updated successfully");
-        await fetchProjects();
       } else {
         setError(updated?.error || "Failed to update project");
       }
-    } else {
-      setError("Failed to update project");
+    } catch (err) {
+      console.error('Update project error:', err);
+      setError(err instanceof Error ? err.message : "Failed to update project");
     }
     setEditLoading(false);
   }
@@ -149,16 +177,27 @@ export default function ProjectsPage() {
 
   async function handleDeleteConfirm() {
     if (!deleteId) return;
+    
     setDeleteLoading(true);
     setError("");
     setSuccess("");
-    const res = await fetch(`/api/projects/${deleteId}`, { method: "DELETE" });
-    if (res.ok) {
+    
+    try {
+      const res = await fetch(`/api/projects/${deleteId}`, { method: "DELETE" });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to delete project');
+      }
+      
+      // Update the projects list immediately without refetching
+      setProjects(prev => prev.filter(p => p.id !== deleteId));
       setSuccess("Project deleted successfully");
-      await fetchProjects();
-    } else {
-      setError("Failed to delete project");
+    } catch (err) {
+      console.error('Delete project error:', err);
+      setError(err instanceof Error ? err.message : "Failed to delete project");
     }
+    
     setDeleteId(null);
     setDeleteLoading(false);
   }

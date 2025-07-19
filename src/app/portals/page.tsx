@@ -5,7 +5,8 @@ interface Portal {
   id: string;
   name: string;
   link: string;
-  credentials: any;
+  username: string | null;
+  password: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -14,7 +15,8 @@ export default function PortalsPage() {
   const [portals, setPortals] = useState<Portal[]>([]);
   const [name, setName] = useState("");
   const [link, setLink] = useState("");
-  const [credentials, setCredentials] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,6 +26,7 @@ export default function PortalsPage() {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
 
   useEffect(() => {
     fetchPortals();
@@ -48,25 +51,18 @@ export default function PortalsPage() {
     setLoading(true);
     setError("");
     setSuccess("");
-    let creds: any = null;
-    try {
-      creds = credentials ? JSON.parse(credentials) : null;
-    } catch {
-      setError("Credentials must be valid JSON");
-      setLoading(false);
-      return;
-    }
     const res = await fetch("/api/portals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, link, credentials: creds, notes }),
+      body: JSON.stringify({ name, link, username, password, notes }),
     });
     if (res.ok) {
       const newPortal = await res.json();
       if (newPortal && !newPortal.error) {
         setName("");
         setLink("");
-        setCredentials("");
+        setUsername("");
+        setPassword("");
         setNotes("");
         setSuccess("Portal added successfully");
         await fetchPortals();
@@ -80,7 +76,7 @@ export default function PortalsPage() {
   }
 
   function handleEditClick(portal: Portal) {
-    setEditPortal({ ...portal, credentials: JSON.stringify(portal.credentials || {}, null, 2) });
+    setEditPortal(portal);
   }
 
   async function handleEditSave(e: React.FormEvent) {
@@ -89,18 +85,10 @@ export default function PortalsPage() {
     setEditLoading(true);
     setError("");
     setSuccess("");
-    let creds: any = null;
-    try {
-      creds = editPortal.credentials ? JSON.parse(editPortal.credentials) : null;
-    } catch {
-      setError("Credentials must be valid JSON");
-      setEditLoading(false);
-      return;
-    }
     const res = await fetch(`/api/portals/${editPortal.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...editPortal, credentials: creds }),
+      body: JSON.stringify(editPortal),
     });
     if (res.ok) {
       const updated = await res.json();
@@ -152,6 +140,18 @@ export default function PortalsPage() {
   return (
     <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto px-2 sm:px-6">
       <h1 className="text-2xl font-bold text-[var(--primary)]">Portals</h1>
+      {/* Show/Hide Passwords Toggle */}
+      <div className="flex items-center mb-2">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showPasswords}
+            onChange={() => setShowPasswords(v => !v)}
+            className="accent-[var(--primary)]"
+          />
+          <span className="text-sm text-[var(--primary-dark)]">Show Passwords</span>
+        </label>
+      </div>
       <form onSubmit={handleAddPortal} className="flex flex-col sm:flex-row flex-wrap gap-4 items-end bg-[var(--surface)] border border-[var(--border)] rounded-lg p-4 shadow-sm w-full">
         <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Name</label>
@@ -162,8 +162,12 @@ export default function PortalsPage() {
           <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={link} onChange={e => setLink(e.target.value)} required />
         </div>
         <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
-          <label className="font-medium text-[var(--primary-dark)]">Credentials (JSON)</label>
-          <input className="border border-[var(--border)] rounded px-3 py-2 font-mono w-full min-w-0" value={credentials} onChange={e => setCredentials(e.target.value)} placeholder='{"user":"admin","pass":"secret"}' />
+          <label className="font-medium text-[var(--primary-dark)]">Username</label>
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" />
+        </div>
+        <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
+          <label className="font-medium text-[var(--primary-dark)]">Password</label>
+          <input className="border border-[var(--border)] rounded px-3 py-2 w-full min-w-0" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password" />
         </div>
         <div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 flex-1">
           <label className="font-medium text-[var(--primary-dark)]">Notes</label>
@@ -189,7 +193,8 @@ export default function PortalsPage() {
             <tr className="bg-[var(--primary-light)] text-white">
               <th className="px-4 py-2 text-left">Name</th>
               <th className="px-4 py-2 text-left">Link</th>
-              <th className="px-4 py-2 text-left">Credentials</th>
+              <th className="px-4 py-2 text-left">Username</th>
+              <th className="px-4 py-2 text-left">Password</th>
               <th className="px-4 py-2 text-left">Notes</th>
               <th className="px-4 py-2 text-left">Created At</th>
               <th className="px-4 py-2 text-left">Actions</th>
@@ -200,7 +205,8 @@ export default function PortalsPage() {
               <tr key={portal.id} className="border-t border-[var(--border)]">
                 <td className="px-4 py-2 break-words max-w-[120px]">{portal.name}</td>
                 <td className="px-4 py-2 break-words max-w-[160px]"><a href={portal.link} target="_blank" rel="noopener noreferrer" className="text-[var(--primary-light)] underline">{portal.link}</a></td>
-                <td className="px-4 py-2 break-words max-w-[160px]"><pre className="whitespace-pre-wrap text-xs font-mono">{portal.credentials ? JSON.stringify(portal.credentials, null, 2) : ""}</pre></td>
+                <td className="px-4 py-2 break-words max-w-[120px]">{portal.username || ""}</td>
+                <td className="px-4 py-2 break-words max-w-[120px]">{showPasswords ? (portal.password || "") : (portal.password ? "••••••••" : "")}</td>
                 <td className="px-4 py-2 break-words max-w-[120px]">{portal.notes}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{new Date(portal.created_at).toLocaleString()}</td>
                 <td className="px-4 py-2 flex gap-2 flex-wrap">
@@ -211,7 +217,7 @@ export default function PortalsPage() {
             ))}
             {filteredPortals.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-[var(--primary-dark)]">No portals found.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-[var(--primary-dark)]">No portals found.</td>
               </tr>
             )}
           </tbody>
@@ -223,11 +229,13 @@ export default function PortalsPage() {
           <form onSubmit={handleEditSave} className="bg-[var(--surface)] border border-[var(--border)] rounded-lg p-6 sm:p-8 flex flex-col gap-4 min-w-[90vw] max-w-md w-full shadow-lg">
             <h2 className="text-xl font-bold text-[var(--primary)] mb-2">Edit Portal</h2>
             <label className="font-medium text-[var(--primary-dark)]">Name</label>
-            <input name="name" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.name} onChange={handleEditChange} required />
+            <input name="name" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.name || ""} onChange={handleEditChange} required />
             <label className="font-medium text-[var(--primary-dark)]">Link</label>
-            <input name="link" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.link} onChange={handleEditChange} required />
-            <label className="font-medium text-[var(--primary-dark)]">Credentials (JSON)</label>
-            <textarea name="credentials" className="border border-[var(--border)] rounded px-3 py-2 font-mono" rows={3} value={editPortal.credentials} onChange={handleEditChange} />
+            <input name="link" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.link || ""} onChange={handleEditChange} required />
+            <label className="font-medium text-[var(--primary-dark)]">Username</label>
+            <input name="username" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.username || ""} onChange={handleEditChange} placeholder="Username" />
+            <label className="font-medium text-[var(--primary-dark)]">Password</label>
+            <input name="password" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.password || ""} onChange={handleEditChange} placeholder="Password" type="password" />
             <label className="font-medium text-[var(--primary-dark)]">Notes</label>
             <input name="notes" className="border border-[var(--border)] rounded px-3 py-2" value={editPortal.notes || ""} onChange={handleEditChange} />
             <div className="flex gap-4 mt-4 flex-wrap">

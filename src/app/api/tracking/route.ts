@@ -41,41 +41,6 @@ async function addTracking(body: any) {
   return data[0];
 }
 
-async function updateTracking(id: string, body: any) {
-  const payload = {
-    entity_type: typeof body.entity_type === 'string' && body.entity_type.trim() ? body.entity_type.trim() : null,
-    entity_id: typeof body.entity_id === 'string' && body.entity_id.trim() ? body.entity_id.trim() : null,
-    action: typeof body.action === 'string' && body.action.trim() ? body.action.trim() : null,
-    details: body.details ?? null,
-  };
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/tracking?id=eq.${id}`, {
-    method: "PATCH",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (!Array.isArray(data) || !data[0]) {
-    console.error('Supabase error:', data);
-    return { error: data?.message || 'Supabase update error', details: data };
-  }
-  return data[0];
-}
-
-async function deleteTracking(id: string) {
-  await fetch(`${SUPABASE_URL}/rest/v1/tracking?id=eq.${id}`, {
-    method: "DELETE",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
-  });
-}
-
 export async function GET() {
   const tracking = await getTracking();
   return NextResponse.json(tracking);
@@ -88,22 +53,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create tracking entry' }, { status: 500 });
   }
   return NextResponse.json(tracking);
-}
-
-export async function PUT(req: NextRequest) {
-  const url = new URL(req.url);
-  const id = url.pathname.split("/").pop();
-  const body = await req.json();
-  const updated = await updateTracking(id!, body);
-  if (!updated || typeof updated !== 'object') {
-    return NextResponse.json({ error: 'Failed to update tracking entry' }, { status: 500 });
-  }
-  return NextResponse.json(updated);
-}
-
-export async function DELETE(req: NextRequest) {
-  const url = new URL(req.url);
-  const id = url.pathname.split("/").pop();
-  await deleteTracking(id!);
-  return NextResponse.json({ success: true });
 } 
