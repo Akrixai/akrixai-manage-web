@@ -53,10 +53,11 @@ async function deleteTracking(id: string) {
   return { success: true };
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: { params: { id: string } }) {
   try {
+    const { id } = context.params;
     const body = await req.json();
-    const updated = await updateTracking(params.id, body);
+    const updated = await updateTracking(id, body);
     
     if (updated.error) {
       return NextResponse.json({ error: updated.error }, { status: 400 });
@@ -69,9 +70,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const result = await deleteTracking(params.id);
+    const { id } = context.params;
+    const result = await deleteTracking(id);
     
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });

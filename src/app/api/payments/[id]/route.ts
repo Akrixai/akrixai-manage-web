@@ -55,15 +55,14 @@ async function deletePayment(id: string) {
   return { success: true };
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: { params: { id: string } }) {
   try {
+    const { id } = context.params;
     const body = await req.json();
-    const updated = await updatePayment(params.id, body);
-    
+    const updated = await updatePayment(id, body);
     if (updated.error) {
       return NextResponse.json({ error: updated.error }, { status: 400 });
     }
-    
     return NextResponse.json(updated);
   } catch (error) {
     console.error('PUT error:', error);
@@ -71,14 +70,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const result = await deletePayment(params.id);
-    
+    const { id } = context.params;
+    const result = await deletePayment(id);
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
-    
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE error:', error);

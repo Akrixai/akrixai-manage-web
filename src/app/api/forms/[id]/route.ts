@@ -53,10 +53,11 @@ async function deleteForm(id: string) {
   return { success: true };
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: { params: { id: string } }) {
   try {
+    const { id } = context.params;
     const body = await req.json();
-    const updated = await updateForm(params.id, body);
+    const updated = await updateForm(id, body);
     
     if (updated.error) {
       return NextResponse.json({ error: updated.error }, { status: 400 });
@@ -69,9 +70,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const result = await deleteForm(params.id);
+    const { id } = context.params;
+    const result = await deleteForm(id);
     
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });
